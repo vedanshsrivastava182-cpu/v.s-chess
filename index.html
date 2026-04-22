@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Vedansh AI Chess 🔥</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  background:#111;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
+
+#board{
+  width:320px;
+  margin:20px auto;
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+}
+
+.square{
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:26px;
+  cursor:pointer;
+}
+
+.white{background:#eee;}
+.black{background:#444;}
+.sel{background:#00ff88 !important;}
+
+#chat{
+  position:fixed;
+  bottom:10px;
+  right:10px;
+  width:220px;
+  height:200px;
+  background:#000;
+  border:2px solid #00ffcc;
+  overflow-y:auto;
+  padding:5px;
+  font-size:12px;
+}
+
+.msg{margin:5px;padding:4px;border-radius:5px;}
+.ai{background:#00ffcc;color:black;}
+.user{background:#444;}
+</style>
+</head>
+
+<body>
+
+<h2>♟️ Vedansh AI Chess 😈</h2>
+<p id="turn">Turn: White</p>
+
+<div id="board"></div>
+<div id="chat"></div>
+
+<script>
+
+let turn="white";
+let selected=null;
+
+let roastLines=[
+"Bas itna hi aata hai? 😂",
+"Ye move tha ya mazak? 😏",
+"Thoda soch liya karo bhai 🤦‍♂️",
+"Mujhse jeetna mushkil hi nahi impossible hai 😎",
+"Galti pe galti kar rahe ho 🤡",
+"Abhi se haar maan lo 😈"
+];
+
+let boardData=[
+["♜","♞","♝","♛","♚","♝","♞","♜"],
+["♟","♟","♟","♟","♟","♟","♟","♟"],
+["","","","","","","",""],
+["","","","","","","",""],
+["","","","","","","",""],
+["","","","","","","",""],
+["♙","♙","♙","♙","♙","♙","♙","♙"],
+["♖","♘","♗","♕","♔","♗","♘","♖"]
+];
+
+// Chat
+function msg(t,type){
+  let c=document.getElementById("chat");
+  let d=document.createElement("div");
+  d.className="msg "+type;
+  d.innerText=t;
+  c.appendChild(d);
+  c.scrollTop=c.scrollHeight;
+}
+
+// Voice
+function speak(t){
+  let s=new SpeechSynthesisUtterance(t);
+  s.lang="hi-IN";
+  speechSynthesis.speak(s);
+}
+
+// AI Talk + Roast
+function aiTalk(text){
+  let roast=roastLines[Math.floor(Math.random()*roastLines.length)];
+  let finalText=text+" 😏 "+roast;
+  msg("Vedansh AI: "+finalText,"ai");
+  speak(finalText);
+}
+
+// Render
+function render(){
+  let b=document.getElementById("board");
+  b.innerHTML="";
+
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+
+      let d=document.createElement("div");
+      d.className="square "+((r+c)%2==0?"white":"black");
+
+      if(selected && selected.r==r && selected.c==c){
+        d.classList.add("sel");
+      }
+
+      d.innerText=boardData[r][c];
+      d.onclick=()=>clickSq(r,c);
+
+      b.appendChild(d);
+    }
+  }
+
+  document.getElementById("turn").innerText="Turn: "+turn;
+}
+
+// USER MOVE
+function clickSq(r,c){
+
+  if(turn!="white") return;
+
+  let piece=boardData[r][c];
+
+  if(!selected){
+    if(piece=="" || piece.charCodeAt(0)>9817) return;
+    selected={r,c};
+    render();
+    return;
+  }
+
+  if(validMove(selected.r,selected.c,r,c)){
+
+    boardData[r][c]=boardData[selected.r][selected.c];
+    boardData[selected.r][selected.c]="";
+
+    aiTalk("Nice try");
+
+    selected=null;
+    turn="black";
+    render();
+
+    setTimeout(aiMove,500);
+
+  } else {
+    aiTalk("Invalid move");
+    selected=null;
+    render();
+  }
+}
+
+// AI EVALUATION
+function evaluateBoard(){
+  let val=0;
+
+  let values={
+    "♙":10,"♟":-10,
+    "♖":50,"♜":-50,
+    "♘":30,"♞":-30,
+    "♗":30,"♝":-30,
+    "♕":90,"♛":-90,
+    "♔":900,"♚":-900
+  };
+
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      let p=boardData[r][c];
+      if(values[p]) val+=values[p];
+    }
+  }
+
+  return val;
+}
+
+// MINIMAX
+function minimax(depth,isMax){
+
+  if(depth==0) return evaluateBoard();
+
+  let best=isMax ? -9999 : 9999;
+
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+
+      let p=boardData[r][c];
+
+      if(p!="" && (p.charCodeAt(0)>9817)==isMax){
+
+        for(let tr=0;tr<8;tr++){
+          for(let tc=0;tc<8;tc++){
+
+            if(validMove(r,c,tr,tc)){
+
+              let temp=boardData[tr][tc];
+
+              boardData[tr][tc]=p;
+              boardData[r][c]="";
+
+              let score=minimax(depth-1,!isMax);
+
+              boardData[r][c]=p;
+              boardData[tr][tc]=temp;
+
+              if(isMax) best=Math.max(best,score);
+              else best=Math.min(best,score);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return best;
+}
+
+// AI MOVE (HARD)
+function aiMove(){
+
+  let bestScore=9999;
+  let bestMove=null;
+
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+
+      let p=boardData[r][c];
+
+      if(p!="" && p.charCodeAt(0)>9817){
+
+        for(let tr=0;tr<8;tr++){
+          for(let tc=0;tc<8;tc++){
+
+            if(validMove(r,c,tr,tc)){
+
+              let temp=boardData[tr][tc];
+
+              boardData[tr][tc]=p;
+              boardData[r][c]="";
+
+              let score=minimax(3,true); // HARD LEVEL
+
+              boardData[r][c]=p;
+              boardData[tr][tc]=temp;
+
+              if(score<bestScore){
+                bestScore=score;
+                bestMove={r,c,tr,tc};
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if(!bestMove) return;
+
+  let target=boardData[bestMove.tr][bestMove.tc];
+
+  if(target=="♔"){
+    aiTalk("Checkmate 😎 Game Over");
+    alert("AI Wins!");
+    location.reload();
+  }
+
+  boardData[bestMove.tr][bestMove.tc]=boardData[bestMove.r][bestMove.c];
+  boardData[bestMove.r][bestMove.c]="";
+
+  aiTalk("Mera move dekh");
+
+  turn="white";
+  render();
+}
+
+// RULES
+function validMove(sr,sc,tr,tc){
+
+  let p=boardData[sr][sc];
+  let t=boardData[tr][tc];
+
+  if(p=="" || (t!="" && (p.charCodeAt(0)<=9817)===(t.charCodeAt(0)<=9817))) return false;
+
+  let dr=tr-sr, dc=tc-sc;
+
+  function path(){
+    let d1=Math.sign(dr), d2=Math.sign(dc);
+    let r=sr+d1,c=sc+d2;
+    while(r!=tr || c!=tc){
+      if(boardData[r][c]!="") return false;
+      r+=d1;c+=d2;
+    }
+    return true;
+  }
+
+  switch(p){
+
+    case "♙": return (dc==0&&dr==-1&&t=="")||(Math.abs(dc)==1&&dr==-1&&t!="");
+    case "♟": return (dc==0&&dr==1&&t=="")||(Math.abs(dc)==1&&dr==1&&t!="");
+
+    case "♖":
+    case "♜": return (dr==0||dc==0)&&path();
+
+    case "♗":
+    case "♝": return Math.abs(dr)==Math.abs(dc)&&path();
+
+    case "♕":
+    case "♛": return (dr==0||dc==0||Math.abs(dr)==Math.abs(dc))&&path();
+
+    case "♘":
+    case "♞": return (Math.abs(dr)==2&&Math.abs(dc)==1)||(Math.abs(dr)==1&&Math.abs(dc)==2);
+
+    case "♔":
+    case "♚": return Math.abs(dr)<=1 && Math.abs(dc)<=1;
+  }
+
+  return false;
+}
+
+// START
+render();
+aiTalk("Vedansh AI se khelne ke liye tayyar ho jao 😈");
+
+</script>
+
+</body>
+</html>
